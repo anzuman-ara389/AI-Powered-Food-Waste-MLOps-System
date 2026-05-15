@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.ipynb_checkpoints/
+
+# Environment
+.env
+.venv/
+venv/
+ENV/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database
+data/*.db
+
+# Large Kaggle data files
+data/train.csv
+data/features.csv
+data/stores.csv
+
+# Generated processed data
+data/processed_food_sales.csv
+
+# Models
+models/*.pkl
+models/*.joblib
+
+# Logs
+logs/*.csv
+
+# Artifacts
+artifacts/*.csv
+artifacts/*.json
+
+# Streamlit
+.streamlit/
