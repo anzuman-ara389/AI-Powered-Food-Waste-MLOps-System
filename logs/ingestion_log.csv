@@ -1,0 +1,6 @@
+timestamp,status_code,product_name,category,store_id,current_stock,units_sold,waste_quantity,source
+2026-05-15T10:19:39.408500,200,Dept_1,A,17,242,38,81,simulated_live_event
+2026-05-15T10:19:41.453952,200,Dept_4,B,22,54,30,4,simulated_live_event
+2026-05-15T10:19:43.493070,200,Dept_5,C,23,247,83,16,simulated_live_event
+2026-05-15T10:19:45.528792,200,Dept_3,B,30,92,79,5,simulated_live_event
+2026-05-15T10:19:47.569328,200,Dept_1,A,27,195,78,11,simulated_live_event

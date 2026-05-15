@@ -1,0 +1,2 @@
+model_name,mae,rmse,r2,training_rows,target_column,model_path,features_path,created_at
+RandomForestRegressor,0.2823,48.5533,0.9995,421575,units_sold,models/demand_model.pkl,models/model_features.pkl,2026-05-15T10:25:28.027103

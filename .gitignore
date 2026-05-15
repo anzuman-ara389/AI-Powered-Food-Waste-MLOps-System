@@ -30,12 +30,5 @@ data/processed_food_sales.csv
 models/*.pkl
 models/*.joblib
 
-# Logs
-logs/*.csv
-
-# Artifacts
-artifacts/*.csv
-artifacts/*.json
-
 # Streamlit
 .streamlit/

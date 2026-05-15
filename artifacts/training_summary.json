@@ -1,0 +1,32 @@
+{
+    "model_name": "RandomForestRegressor",
+    "mae": 0.2823,
+    "rmse": 48.5533,
+    "r2": 0.9995,
+    "training_rows": 421575,
+    "target_column": "units_sold",
+    "model_path": "models/demand_model.pkl",
+    "features_path": "models/model_features.pkl",
+    "created_at": "2026-05-15T10:25:28.027103",
+    "features_used": [
+        "product_encoded",
+        "category_encoded",
+        "store_id",
+        "day_of_week",
+        "is_weekend",
+        "is_holiday",
+        "promotion",
+        "temperature",
+        "current_stock",
+        "unit_price",
+        "expiry_days",
+        "waste_quantity",
+        "stock_to_sales_ratio",
+        "is_high_stock",
+        "is_low_demand",
+        "short_expiry",
+        "promotion_active",
+        "waste_risk_score"
+    ],
+    "purpose": "Demand forecasting model for food waste prediction and inventory optimization"
+}
