@@ -4,3 +4,8 @@ timestamp,status_code,product_name,category,store_id,current_stock,units_sold,wa
 2026-05-15T10:19:43.493070,200,Dept_5,C,23,247,83,16,simulated_live_event
 2026-05-15T10:19:45.528792,200,Dept_3,B,30,92,79,5,simulated_live_event
 2026-05-15T10:19:47.569328,200,Dept_1,A,27,195,78,11,simulated_live_event
+2026-05-15T11:49:21.085895,200,Dept_1,A,23,69,69,0,simulated_live_event
+2026-05-15T11:49:23.131478,200,Dept_6,A,30,165,77,8,simulated_live_event
+2026-05-15T11:49:25.154023,200,Dept_6,A,9,239,72,16,simulated_live_event
+2026-05-15T11:49:27.188538,200,Dept_5,C,6,157,99,11,simulated_live_event
+2026-05-15T11:49:29.204380,200,Dept_5,C,25,177,149,2,simulated_live_event
