@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 
-from database import get_connection, init_db
+from src.database import get_connection, init_db
 
 
 PROCESSED_PATH = "data/processed_food_sales.csv"

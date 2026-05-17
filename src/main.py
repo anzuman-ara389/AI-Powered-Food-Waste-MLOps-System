@@ -1,24 +1,24 @@
 import os
-import sys
 from datetime import datetime
-
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-if CURRENT_DIR not in sys.path:
-    sys.path.insert(0, CURRENT_DIR)
 
 import joblib
 import pandas as pd
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-from database import get_connection, init_db
-from preprocess import preprocess_data
-from train import train_model, MODEL_PATH, FEATURE_COLUMNS
+from src.database import get_connection, init_db
+from src.preprocess import preprocess_data
+from src.train import train_model, MODEL_PATH, FEATURE_COLUMNS
+from src.drift_detection import run_drift_check
+from src.auto_retrain import auto_retrain
 
 
 app = FastAPI(
-    title="AI-Powered Food Waste Prediction API",
-    description="Retail demand forecasting, food waste risk prediction, monitoring, and retraining API.",
+    title="AI-Driven Retail Demand Forecasting and Inventory Optimization API",
+    description=(
+        "AI-driven retail demand forecasting, API ingestion, monitoring, "
+        "retraining, model comparison, and inventory decision support API."
+    ),
     version="1.0.0"
 )
 
@@ -27,9 +27,9 @@ class SalesEvent(BaseModel):
     product_name: str = "Dept_1"
     category: str = "A"
     store_id: int = 1
-    date: str = "2026-05-14"
-    day_of_week: int = 3
-    is_weekend: int = 0
+    date: str = datetime.now().strftime("%Y-%m-%d")
+    day_of_week: int = datetime.now().weekday()
+    is_weekend: int = 1 if datetime.now().weekday() >= 5 else 0
     is_holiday: int = 0
     promotion: int = 0
     temperature: float = 20.0
@@ -45,15 +45,14 @@ class PredictionRequest(BaseModel):
     product_name: str = "Dept_1"
     category: str = "A"
     store_id: int = 1
-    day_of_week: int = 3
-    is_weekend: int = 0
+    day_of_week: int = datetime.now().weekday()
+    is_weekend: int = 1 if datetime.now().weekday() >= 5 else 0
     is_holiday: int = 0
     promotion: int = 0
     temperature: float = 20.0
     current_stock: int = 100
     unit_price: float = 10.0
     expiry_days: int = 5
-    waste_quantity: int = 20
 
 
 @app.on_event("startup")
@@ -64,6 +63,7 @@ def startup_event():
 def load_model():
     if not os.path.exists(MODEL_PATH):
         return None
+
     return joblib.load(MODEL_PATH)
 
 
@@ -73,6 +73,7 @@ def encode_product(product_name):
             return int(product_name.replace("Dept_", ""))
         except ValueError:
             return 0
+
     return 0
 
 
@@ -83,48 +84,42 @@ def encode_category(category):
         "C": 2,
         "General": 3
     }
+
     return category_map.get(category, 0)
 
 
 def build_prediction_features(data):
-    estimated_units_sold = max(1, data.current_stock - data.waste_quantity)
-
-    stock_to_sales_ratio = data.current_stock / (estimated_units_sold + 1)
-
-    is_high_stock = 1 if data.current_stock > 100 else 0
-    is_low_demand = 1 if estimated_units_sold < 50 else 0
     short_expiry = 1 if data.expiry_days <= 3 else 0
-    promotion_active = data.promotion
-
-    waste_risk_score = (
-        stock_to_sales_ratio * 0.4
-        + is_high_stock * 0.2
-        + is_low_demand * 0.2
-        + short_expiry * 0.2
-    )
+    promotion_active = int(data.promotion)
 
     row = {
         "product_encoded": encode_product(data.product_name),
         "category_encoded": encode_category(data.category),
-        "store_id": data.store_id,
-        "day_of_week": data.day_of_week,
-        "is_weekend": data.is_weekend,
-        "is_holiday": data.is_holiday,
-        "promotion": data.promotion,
-        "temperature": data.temperature,
-        "current_stock": data.current_stock,
-        "unit_price": data.unit_price,
-        "expiry_days": data.expiry_days,
-        "waste_quantity": data.waste_quantity,
-        "stock_to_sales_ratio": stock_to_sales_ratio,
-        "is_high_stock": is_high_stock,
-        "is_low_demand": is_low_demand,
-        "short_expiry": short_expiry,
-        "promotion_active": promotion_active,
-        "waste_risk_score": waste_risk_score
+        "store_id": int(data.store_id),
+        "day_of_week": int(data.day_of_week),
+        "is_weekend": int(data.is_weekend),
+        "is_holiday": int(data.is_holiday),
+        "promotion": int(data.promotion),
+        "temperature": float(data.temperature),
+        "unit_price": float(data.unit_price),
+        "expiry_days": int(data.expiry_days),
+        "short_expiry": int(short_expiry),
+        "promotion_active": int(promotion_active)
     }
 
-    return pd.DataFrame([row])[FEATURE_COLUMNS]
+    input_df = pd.DataFrame([row])
+
+    missing_columns = [
+        col for col in FEATURE_COLUMNS
+        if col not in input_df.columns
+    ]
+
+    if missing_columns:
+        raise ValueError(
+            f"Missing prediction feature columns: {missing_columns}"
+        )
+
+    return input_df[FEATURE_COLUMNS]
 
 
 def classify_waste_risk(predicted_demand, current_stock, expiry_days):
@@ -137,25 +132,45 @@ def classify_waste_risk(predicted_demand, current_stock, expiry_days):
 
     if overstock_ratio >= 0.40 or expiry_days <= 2:
         return "High"
-    elif overstock_ratio >= 0.20 or expiry_days <= 5:
+
+    if overstock_ratio >= 0.20 or expiry_days <= 5:
         return "Medium"
-    else:
-        return "Low"
+
+    return "Low"
 
 
 def make_recommendation(predicted_demand, current_stock, waste_risk):
     safety_stock = 10
+
     recommended_order_quantity = max(
         0,
         int(predicted_demand + safety_stock - current_stock)
     )
 
-    if waste_risk == "High":
-        recommendation = "Reduce next order and consider discount or promotion."
+    if predicted_demand > current_stock:
+        recommendation = (
+            "Predicted demand is higher than current stock. "
+            "Increase the next order quantity to avoid stockout."
+        )
+
+    elif waste_risk == "High":
+        recommendation = (
+            "Current stock is much higher than predicted demand. "
+            "Reduce the next order quantity and consider promotion, "
+            "discounting, or faster stock rotation."
+        )
+
     elif waste_risk == "Medium":
-        recommendation = "Monitor inventory carefully and avoid over-ordering."
+        recommendation = (
+            "Inventory has moderate waste risk. "
+            "Monitor stock carefully and avoid over-ordering."
+        )
+
     else:
-        recommendation = "Inventory level looks acceptable. Keep normal order plan."
+        recommendation = (
+            "Inventory level looks acceptable. "
+            "Continue with the normal ordering plan."
+        )
 
     return recommended_order_quantity, recommendation
 
@@ -163,7 +178,9 @@ def make_recommendation(predicted_demand, current_stock, waste_risk):
 @app.get("/")
 def root():
     return {
-        "message": "Food Waste Prediction and Smart Inventory Optimization API is running."
+        "message": (
+            "AI-Driven Retail Demand Forecasting and Inventory Optimization API is running."
+        )
     }
 
 
@@ -261,7 +278,7 @@ def predict_demand(data: PredictionRequest):
 
     if model is None:
         return {
-            "error": "Model not found. Please run python src/train.py first."
+            "error": "Model not found. Please run python -m src.train first."
         }
 
     input_df = build_prediction_features(data)
@@ -269,15 +286,15 @@ def predict_demand(data: PredictionRequest):
     predicted_demand = float(model.predict(input_df)[0])
 
     waste_risk = classify_waste_risk(
-        predicted_demand,
-        data.current_stock,
-        data.expiry_days
+        predicted_demand=predicted_demand,
+        current_stock=data.current_stock,
+        expiry_days=data.expiry_days
     )
 
     recommended_order_quantity, recommendation = make_recommendation(
-        predicted_demand,
-        data.current_stock,
-        waste_risk
+        predicted_demand=predicted_demand,
+        current_stock=data.current_stock,
+        waste_risk=waste_risk
     )
 
     conn = get_connection()
@@ -344,9 +361,22 @@ def model_info():
     return df.to_dict(orient="records")[0]
 
 
+@app.get("/model-comparison")
+def model_comparison():
+    comparison_path = "artifacts/model_comparison.csv"
+
+    if not os.path.exists(comparison_path):
+        return {
+            "message": "No model comparison file found. Run training first."
+        }
+
+    df = pd.read_csv(comparison_path)
+
+    return df.to_dict(orient="records")
+
+
 @app.post("/drift-check")
 def drift_check():
-    from drift_detection import run_drift_check
     return run_drift_check()
 
 
@@ -379,5 +409,4 @@ def retrain():
 
 @app.post("/auto-retrain")
 def auto_retrain_endpoint():
-    from auto_retrain import auto_retrain
     return auto_retrain()

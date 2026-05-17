@@ -12,6 +12,19 @@ PRODUCTS = [
 ]
 
 
+def calculate_waste_quantity(current_stock, units_sold, expiry_days):
+    overstock = max(0, current_stock - units_sold)
+
+    if expiry_days <= 2:
+        waste_quantity = int(overstock * 0.40)
+    elif expiry_days <= 5:
+        waste_quantity = int(overstock * 0.20)
+    else:
+        waste_quantity = int(overstock * 0.10)
+
+    return waste_quantity
+
+
 def generate_food_sales_record():
     product_name, category = random.choice(PRODUCTS)
 
@@ -39,14 +52,11 @@ def generate_food_sales_record():
 
     units_sold = min(current_stock, max(0, base_demand))
 
-    overstock = max(0, current_stock - units_sold)
-
-    if expiry_days <= 2:
-        waste_quantity = int(overstock * 0.4)
-    elif expiry_days <= 5:
-        waste_quantity = int(overstock * 0.2)
-    else:
-        waste_quantity = int(overstock * 0.1)
+    waste_quantity = calculate_waste_quantity(
+        current_stock=current_stock,
+        units_sold=units_sold,
+        expiry_days=expiry_days
+    )
 
     return {
         "product_name": product_name,
@@ -67,6 +77,30 @@ def generate_food_sales_record():
     }
 
 
-if __name__ == "__main__":
+def generate_shifted_food_sales_record():
     record = generate_food_sales_record()
-    print(record)
+
+    record["temperature"] = round(random.uniform(95, 110), 2)
+    record["current_stock"] = random.randint(250, 500)
+    record["units_sold"] = random.randint(5, 30)
+
+    record["waste_quantity"] = calculate_waste_quantity(
+        current_stock=record["current_stock"],
+        units_sold=record["units_sold"],
+        expiry_days=record["expiry_days"]
+    )
+
+    record["source"] = "shifted_drift_event"
+
+    return record
+
+
+if __name__ == "__main__":
+    normal_record = generate_food_sales_record()
+    shifted_record = generate_shifted_food_sales_record()
+
+    print("Normal live event:")
+    print(normal_record)
+
+    print("\nShifted drift event:")
+    print(shifted_record)

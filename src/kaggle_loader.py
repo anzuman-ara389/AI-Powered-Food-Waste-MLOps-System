@@ -12,7 +12,6 @@ STORES_PATH = "data/stores.csv"
 
 
 def load_walmart_data():
-
     init_db()
 
     if not os.path.exists(TRAIN_PATH):
@@ -52,16 +51,30 @@ def load_walmart_data():
 
     df["store_id"] = df["Store"].astype(int)
 
-    df["date"] = df["Date"].astype(str)
+    df["date"] = df["Date"].dt.strftime("%Y-%m-%d")
 
     df["is_holiday"] = df["IsHoliday"].astype(int)
 
+    markdown_columns = [
+        "MarkDown1",
+        "MarkDown2",
+        "MarkDown3",
+        "MarkDown4",
+        "MarkDown5"
+    ]
+
+    for col in markdown_columns:
+        if col not in df.columns:
+            df[col] = 0
+
+        df[col] = df[col].fillna(0)
+
     df["promotion"] = (
-        (df["MarkDown1"].fillna(0) > 0)
-        | (df["MarkDown2"].fillna(0) > 0)
-        | (df["MarkDown3"].fillna(0) > 0)
-        | (df["MarkDown4"].fillna(0) > 0)
-        | (df["MarkDown5"].fillna(0) > 0)
+        (df["MarkDown1"] > 0)
+        | (df["MarkDown2"] > 0)
+        | (df["MarkDown3"] > 0)
+        | (df["MarkDown4"] > 0)
+        | (df["MarkDown5"] > 0)
     ).astype(int)
 
     df["temperature"] = df["Temperature"].fillna(
@@ -73,17 +86,47 @@ def load_walmart_data():
         .clip(lower=0) / 10
     ).round().astype(int)
 
-    df["current_stock"] = df["units_sold"] + 20
-
     df["unit_price"] = 10.0
 
-    df["expiry_days"] = 5
+    df["expiry_days"] = (
+        10 - (df["Dept"].astype(int) % 10)
+    ).clip(lower=1, upper=10)
 
-    df["waste_quantity"] = (
+    stock_buffer = (
+        30
+        + df["is_holiday"] * 20
+        + df["promotion"] * 15
+        + df["is_weekend"] * 10
+    )
+
+    df["current_stock"] = (
+        df["units_sold"] + stock_buffer
+    ).round().astype(int)
+
+    overstock = (
         df["current_stock"] - df["units_sold"]
     ).clip(lower=0)
 
-    df["source"] = "walmart_kaggle_dataset"
+    df["waste_quantity"] = 0
+
+    df.loc[df["expiry_days"] <= 2, "waste_quantity"] = (
+        overstock * 0.40
+    )
+
+    df.loc[
+        (df["expiry_days"] > 2) & (df["expiry_days"] <= 5),
+        "waste_quantity"
+    ] = (
+        overstock * 0.20
+    )
+
+    df.loc[df["expiry_days"] > 5, "waste_quantity"] = (
+        overstock * 0.10
+    )
+
+    df["waste_quantity"] = df["waste_quantity"].round().astype(int)
+
+    df["source"] = "walmart_kaggle_dataset_with_synthetic_inventory_features"
 
     df["created_at"] = datetime.now().isoformat()
 
@@ -124,6 +167,7 @@ def load_walmart_data():
 
     print("Walmart Kaggle data loaded successfully.")
     print("Rows inserted:", len(final_df))
+    print("Synthetic inventory and waste features generated successfully.")
 
 
 if __name__ == "__main__":

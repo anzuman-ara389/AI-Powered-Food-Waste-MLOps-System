@@ -1,13 +1,14 @@
 {
     "model_name": "RandomForestRegressor",
-    "mae": 0.2823,
-    "rmse": 48.5533,
-    "r2": 0.9995,
-    "training_rows": 421575,
+    "mae": 253.5165,
+    "rmse": 682.4729,
+    "r2": 0.9097,
+    "training_rows": 422290,
     "target_column": "units_sold",
-    "model_path": "models/demand_model.pkl",
+    "model_path": "models/demand_model_20260517_120648.pkl",
+    "latest_model_path": "models/demand_model.pkl",
     "features_path": "models/model_features.pkl",
-    "created_at": "2026-05-15T10:25:28.027103",
+    "created_at": "2026-05-17T12:07:18.751776",
     "features_used": [
         "product_encoded",
         "category_encoded",
@@ -17,16 +18,14 @@
         "is_holiday",
         "promotion",
         "temperature",
-        "current_stock",
         "unit_price",
         "expiry_days",
-        "waste_quantity",
-        "stock_to_sales_ratio",
-        "is_high_stock",
-        "is_low_demand",
         "short_expiry",
-        "promotion_active",
-        "waste_risk_score"
+        "promotion_active"
     ],
-    "purpose": "Demand forecasting model for food waste prediction and inventory optimization"
+    "models_compared": [
+        "RandomForestRegressor",
+        "LightGBMRegressor"
+    ],
+    "purpose": "AI-driven retail demand forecasting with model comparison, drift monitoring, retraining, and inventory decision support."
 }

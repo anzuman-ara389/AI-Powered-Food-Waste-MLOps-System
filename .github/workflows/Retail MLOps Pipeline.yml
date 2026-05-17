@@ -1,0 +1,52 @@
+name: MLOps Pipeline Validation
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  validate-pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest httpx
+
+      - name: Check Python syntax
+        run: |
+          python -m compileall src
+
+      - name: Import project modules
+        run: |
+          python -c "from src.database import init_db; init_db()"
+          python -c "from src.live_ingestion import generate_food_sales_record; print(generate_food_sales_record())"
+          python -c "from src.drift_detection import calculate_drift_score; print(calculate_drift_score(100, 120))"
+
+      - name: Validate FastAPI health endpoint
+        run: |
+          python - <<'PY'
+          from fastapi.testclient import TestClient
+          from src.main import app
+
+          client = TestClient(app)
+          response = client.get("/health")
+
+          assert response.status_code == 200
+          assert response.json()["status"] == "healthy"
+
+          print("FastAPI health endpoint validation passed.")
+          PY

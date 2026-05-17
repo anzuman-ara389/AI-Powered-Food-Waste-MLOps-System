@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 
-from database import get_connection, init_db
-from logging_utils import append_csv_log
+from src.database import get_connection, init_db
+from src.logging_utils import append_csv_log
 
 
 DRIFT_FEATURES = [
@@ -13,7 +13,9 @@ DRIFT_FEATURES = [
     "waste_quantity"
 ]
 
-DRIFT_THRESHOLD = 0.20
+DRIFT_THRESHOLD = 0.15
+REFERENCE_WINDOW_SIZE = 1000
+CURRENT_WINDOW_SIZE = 300
 DRIFT_SUMMARY_PATH = "artifacts/drift_summary.csv"
 
 
@@ -30,22 +32,23 @@ def run_drift_check():
     conn = get_connection()
 
     df = pd.read_sql_query(
-        "SELECT * FROM raw_food_sales",
+        "SELECT * FROM raw_food_sales ORDER BY id ASC",
         conn
     )
 
-    if len(df) < 200:
+    if len(df) < REFERENCE_WINDOW_SIZE + CURRENT_WINDOW_SIZE:
         conn.close()
 
         return {
-            "message": "Not enough data for drift detection.",
+            "message": (
+                "Not enough data for drift detection. "
+                f"Need at least {REFERENCE_WINDOW_SIZE + CURRENT_WINDOW_SIZE} rows."
+            ),
             "drift_detected": False
         }
 
-    midpoint = len(df) // 2
-
-    reference_df = df.iloc[:midpoint]
-    current_df = df.iloc[midpoint:]
+    reference_df = df.iloc[-(REFERENCE_WINDOW_SIZE + CURRENT_WINDOW_SIZE):-CURRENT_WINDOW_SIZE]
+    current_df = df.iloc[-CURRENT_WINDOW_SIZE:]
 
     drift_results = []
     overall_drift_detected = False
@@ -83,6 +86,8 @@ def run_drift_check():
             "drift_score": round(drift_score, 4),
             "drift_detected": feature_drift_detected,
             "threshold": DRIFT_THRESHOLD,
+            "reference_window_size": REFERENCE_WINDOW_SIZE,
+            "current_window_size": CURRENT_WINDOW_SIZE,
             "created_at": datetime.now().isoformat()
         }
 
@@ -115,6 +120,8 @@ def run_drift_check():
     return {
         "drift_detected": overall_drift_detected,
         "threshold": DRIFT_THRESHOLD,
+        "reference_window_size": REFERENCE_WINDOW_SIZE,
+        "current_window_size": CURRENT_WINDOW_SIZE,
         "drift_results": drift_results
     }
 

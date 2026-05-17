@@ -1,208 +1,280 @@
-# M6 – Data Engineering and Machine Learning Operations in Business
-# AI-Powered Food Waste Prediction and Smart Inventory Optimization for Retail
-Submitted by: Anzuman Ara
-Student ID: 20241266
 
+# Module: M6-MSc BDS – Data Engineering and Machine Learning Operations in Business
+# Submitted by: Anzuman Ara
+
+# AI-Driven Retail Demand Forecasting and Smart Inventory Optimization
 
 # Overview
-This project implements an end-to-end MLOps pipeline for food waste prediction and smart inventory optimization in retail supermarkets.
 
-The system simulates a production-like environment where:
-* External systems send supermarket inventory and sales data via API
-* Data is stored in a database
-* Preprocessing and feature engineering are applied
-* A machine learning model is trained and versioned
-* Demand predictions are generated via API
-* Prediction outputs are logged for monitoring
-* Data drift is detected
-* The model is retrained automatically if drift is detected
+This project is an end-to-end MLOps pipeline for retail demand forecasting and smart inventory optimization. The system simulates a production-style workflow where live retail sales events are generated, sent through FastAPI APIs, stored in a SQLite database, processed through a preprocessing and feature engineering pipeline, used for demand prediction, monitored for drift, and automatically retrained when drift is detected.
 
-
-# How to Run the Project
-# Step 1: Install dependencies
-pip install -r requirements.txt
+The project demonstrates:
+* Live API-based data ingestion
+* Data preprocessing and feature engineering
+* Machine learning model training and comparison
+* Prediction serving through FastAPI
+* Drift detection and monitoring
+* Automatic retraining pipeline
+* Model artifact tracking and versioning
+* Streamlit dashboard frontend
+* Docker-ready deployment
 
 
-# Step 2: Initialize the database
-python -m src.database
+# Project Architecture
 
-This creates:
-* raw_food_sales
-* prediction_logs
-* drift_reports
-* model_registry
-
-
-# Step 3: Run the FastAPI backend
-uvicorn src.main:app --reload
-
-Open browser:
-http://127.0.0.1:8000/docs
-
-
-# Step 4: Simulate external live data ingestion
-python src/external_client.py
-Flow:
-external_client → POST /sales-event → Database
-
-# Step 5: Check latest sales records
-GET /latest-sales
-
-
-# Step 6: Run full ML pipeline
-POST /run-pipeline
-
-Flow:
-Raw Data
-→ Preprocessing
-→ Feature Engineering
-→ Model Training
-→ Artifact Saving
-→ Model Registry
-
-# Step 7: Make prediction
-POST /predict-demand
-
-Example JSON:
-```json
-{
-  "product_name": "Milk",
-  "category": "Dairy",
-  "store_id": 1,
-  "day_of_week": 4,
-  "is_weekend": 0,
-  "is_holiday": 0,
-  "promotion": 1,
-  "temperature": 30,
-  "current_stock": 120,
-  "unit_price": 5.5,
-  "expiry_days": 3,
-  "waste_quantity": 10
-}
-
-Output:
-* predicted_demand
-* waste_risk
-* inventory_gap
-* recommendation
+```text
+External Data Generator
+        ↓
+FastAPI API Ingestion (/sales-event)
+        ↓
+SQLite Database Storage
+        ↓
+Preprocessing Pipeline
+        ↓
+Feature Engineering
+        ↓
+Model Training & Comparison
+        ↓
+Prediction Pipeline
+        ↓
+Drift Detection
+        ↓
+Automatic Retraining
+        ↓
+Streamlit Monitoring Dashboard
+```
 
 
-# Step 8: View prediction logs
-GET /prediction-logs
+# Features
 
-# Step 9: View model info
-GET /model-info
+## API-Based Data Ingestion
 
-Metrics include:
+The project simulates live retail sales events using an external client. Events are generated and sent to the FastAPI backend through REST APIs.
+
+Endpoint:
+
+```text
+POST /sales-event
+```
+
+# Data Preprocessing
+The preprocessing pipeline performs:
+* Missing value handling
+* Data type conversion
+* Feature generation
+* Feature selection
+* Processed dataset creation
+
+
+# Feature Engineering
+The system creates engineered features including:
+* product_encoded
+* category_encoded
+* day_of_week
+* is_weekend
+* promotion_active
+* short_expiry
+* temperature
+* unit_price
+* expiry_days
+
+These features are used for retail demand forecasting and inventory risk estimation.
+
+
+# Model Training and Comparison
+The project trains and compares two machine learning models:
+* RandomForestRegressor
+* LightGBMRegressor
+The best-performing model is selected automatically based on RMSE.
+
+Tracked metrics:
 * MAE
 * RMSE
 * R² Score
 
 
-# Step 10: Run drift detection
+# Prediction Pipeline
+The API prediction endpoint:
+```text
+POST /predict-demand
+```
+
+Pipeline steps:
+1. Receive prediction request
+2. Build engineered features
+3. Run model inference
+4. Estimate waste risk
+5. Generate inventory recommendation
+6. Store prediction logs
+
+
+# Drift Detection
+The system monitors feature drift using relative mean shift analysis between reference and current data windows to identify significant changes in incoming data patterns.
+
+Endpoint:
+```text
 POST /drift-check
-
-Uses features:
-* units_sold
-* current_stock
-* temperature
-* waste_quantity
+```
 
 
-# Step 11: View drift report
-GET /drift-reports
+# Automatic Retraining
+When significant drift is detected, the pipeline automatically retrains the model and saves a new versioned artifact.
 
-# Step 12: Manual retraining
-POST /retrain
-
-
-# Step 13: Automatic retraining
+Endpoint:
+```text
 POST /auto-retrain
+```
 
-If drift is detected → model retrains automatically.
+# Model Versioning
+Each retrained model is stored with a timestamp-based filename.
+
+Example:
+```text
+models/demand_model_20260516_220712.pkl
+```
+
+The latest serving model is also maintained:
+```text
+models/demand_model.pkl
+```
+
+
+# Streamlit Dashboard
+
+The frontend dashboard provides:
+* Predict Demand page
+* Latest Sales page
+* Model Comparison page
+* Model Information page
+* Drift Reports page
+* Pipeline Actions page
+
+
+# Project Structure
+```text
+project/
+│
+├── src/
+│   ├── main.py
+│   ├── preprocess.py
+│   ├── train.py
+│   ├── drift_detection.py
+│   ├── auto_retrain.py
+│   ├── external_client.py
+│   ├── frontend.py
+│   ├── database.py
+│   └── kaggle_loader.py
+│
+├── models/
+├── artifacts/
+├── logs/
+├── tests/
+├── docker-compose.yml
+├── Dockerfile
+├── requirements.txt
+└── README.md
+```
+
+
+# 1. Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+# 2. Initialize Database
+```bash
+python -m src.database
+```
+
+
+# 3. Start FastAPI Backend
+```bash
+uvicorn src.main:app --reload
+```
+
+Swagger Documentation:
+```text
+http://127.0.0.1:8000/docs
+```
+
+## 4. Generate Live Sales Events
+Normal live data:
+```bash
+python -m src.external_client --mode normal --events 20 --delay 1
+```
+
+Shifted drift data:
+```bash
+python -m src.external_client --mode shifted --events 300 --delay 0.1
+```
+
+
+# 5. Start Streamlit Dashboard
+```bash
+streamlit run src/frontend.py
+```
+
+Dashboard:
+```text
+http://localhost:8501
+```
+
 
 # API Endpoints
-
-| Endpoint         | Method | Purpose            |
-| ---------------- | ------ | ------------------ |
-| /                | GET    | API status         |
-| /health          | GET    | Health check       |
-| /sales-event     | POST   | Insert sales event |
-| /latest-sales    | GET    | View latest sales  |
-| /run-pipeline    | POST   | Run ML pipeline    |
-| /predict-demand  | POST   | Predict demand     |
-| /prediction-logs | GET    | View predictions   |
-| /model-info      | GET    | View model metrics |
-| /drift-check     | POST   | Drift detection    |
-| /drift-reports   | GET    | View drift reports |
-| /retrain         | POST   | Manual retraining  |
-| /auto-retrain    | POST   | Auto retraining    |
-
-
-# Pipeline Flow
-External Client
-→ API (/sales-event)
-→ Database
-→ Preprocessing
-→ Feature Engineering
-→ Model Training
-→ Model Registry
-→ Prediction
-→ Logging
-→ Drift Detection
-→ Retraining
-
-# Feature Engineering
-
-* stock_to_sales_ratio → overstock detection
-* is_high_stock → excessive inventory detection
-* is_low_demand → weak demand detection
-* short_expiry → near-expiration products
-* promotion_active → promotional impact
-* waste_risk_score → food waste risk estimation
+| Endpoint          | Method | Description                    |
+| ----------------- | ------ | ------------------------------ |
+| /sales-event      | POST   | Insert live sales event        |
+| /latest-sales     | GET    | Fetch latest sales records     |
+| /run-pipeline     | POST   | Run preprocessing and training |
+| /predict-demand   | POST   | Predict retail demand          |
+| /prediction-logs  | GET    | View prediction history        |
+| /model-info       | GET    | Latest model metadata          |
+| /model-comparison | GET    | Compare trained models         |
+| /drift-check      | POST   | Run drift detection            |
+| /drift-reports    | GET    | View drift reports             |
+| /retrain          | POST   | Manual retraining              |
+| /auto-retrain     | POST   | Automatic retraining           |
+| /health           | GET    | Health check                   |
 
 
-# Model Metrics
-
-* MAE → prediction error
-* RMSE → error magnitude
-* R² Score → model accuracy
-
-# Artifacts
-Stored in `artifacts/`:
-* model_metrics.csv
-* drift_summary.csv
-* training_summary.json
-
-
-# Logs
-Stored in `logs/`:
-* ingestion_log.csv
-* retraining_log.csv
+# Example Prediction Request
+```json
+{
+  "product_name": "Dept_1",
+  "category": "A",
+  "store_id": 1,
+  "day_of_week": 2,
+  "is_weekend": 0,
+  "is_holiday": 0,
+  "promotion": 1,
+  "temperature": 65,
+  "current_stock": 120,
+  "unit_price": 10,
+  "expiry_days": 5
+}
 
 
-# Database Tables
-* raw_food_sales
-* prediction_logs
-* drift_reports
-* model_registry
+# Testing
+Run tests:
 
+```bash
+pytest tests/ -v
+```
 
-# Production Simulation
-This project demonstrates:
-* API-based ingestion
-* ML pipeline automation
-* Model monitoring
-* Drift detection
-* Automatic retraining
-* Production-style MLOps workflow
+# Docker Deployment
+Build and run:
+```bash
+docker-compose up --build
+```
 
-
-# GitHub Note
-Large generated datasets and trained model binaries are excluded from GitHub due to GitHub storage limitations.
-
-The complete pipeline can regenerate these files automatically.
-
+# Reproducibility
+The project supports reproducibility through:
+* Versioned model artifacts
+* Stored metrics
+* Drift reports
+* Prediction logs
+* Requirements freeze
+* Docker configuration
 
 # Conclusion
-This project focuses on building a reproducible, scalable, and production-like MLOps system for intelligent inventory optimization and food waste reduction in retail supermarkets.
+The project uses the Walmart Store Sales Forecasting dataset as the primary retail demand dataset.Additional inventory and waste-related fields are synthetically generated to simulate inventory optimization and waste-risk analysis workflows in a realistic MLOps environment.
